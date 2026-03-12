@@ -29,7 +29,7 @@ class TagsField extends ListField
 	 * @since  1.0.0
 	 */
 	// J6: protected + typed string
-	protected string $type = 'Tags';
+	protected $type = 'Tags';
 
 	/**
 	 * Flag to work with nested tag field.
@@ -55,7 +55,7 @@ class TagsField extends ListField
 	 * @since  1.0.0
 	 */
 	// J6: typed string
-	protected string $layout = 'joomla.form.field.tag';
+	protected $layout = 'joomla.form.field.tag';
 
 	/**
 	 * Constructor.
