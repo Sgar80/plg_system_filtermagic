@@ -1,7 +1,64 @@
-## NO LONGER MAINTAINED
+FilterMagic – Joomla 6 Compatibility Port & Bug Fix Release (v1.1.0)
 
-> [!WARNING]  
-> This software is no longer maintained. It **DOES NOT** support Joomla 6 or later versions.
+This release ports the original FilterMagic system plugin by Nicholas K. Dionysopoulos to Joomla 6 (PHP 8.1+), fixing all deprecated and removed API calls, improving type safety throughout the codebase, and correcting several bugs present in the original code.
+🔧 Joomla 6 Compatibility Fixes
+
+    Removed JetBrains\PhpStorm\ArrayShape — IDE-only annotation not available in production environments; all #[ArrayShape(...)] attributes removed
+
+    Removed Joomla\Database\Query\QueryElement — no longer part of the public API in J6; replaced with a strpos((string) $query, 'WHERE') check
+
+    Fixed Registry namespace — Joomla\CMS\HTML\Registry → Joomla\Registry\Registry
+
+    Replaced Factory::getUser() — removed in J6; replaced with Factory::getApplication()->getIdentity() with null-safe check
+
+    Replaced DatabaseDriver type hint — updated to DatabaseInterface (J6 standard)
+
+    Updated service provider — removed unused MVCComponent import, added proper return types to closures
+
+    XML manifest updated — added <targetplatform name="joomla" version="6\.*" /> and <php_minimum>8.1</php_minimum>
+
+    Removed deprecated JNO/JYES option keys from XML config — the switcher layout handles them natively since J4
+
+🐛 Bug Fixes
+
+    SubcategoryField: fixed bind parameter typo $filters['filter_access'] (underscore) → $filters['filter.access'] (dot) — the access filter was silently broken in the original
+
+    TagsField: renamed $isNested property to $isNestedMode to avoid collision with the isNested() method of the same name
+
+    Buffer stream wrapper: fixed SEEK_SET boundary condition — was using < strlen() instead of <= strlen(), making it impossible to seek to end-of-stream
+
+    TagsField: $option->value == $id loose comparison replaced with strict (int) $option->value === $id
+
+    Layout form.php: Uri::current() and dynamic form ID were output unescaped in HTML attributes — fixed with htmlspecialchars()
+
+    Layout fields.php: $field->label was output unescaped; data-showon JSON was injected raw into HTML attribute — both fixed
+
+    SubcategoryField: removed redundant double $options = [] declaration
+
+✅ Code Quality Improvements
+
+    Added missing return types across all classes (string, bool, int, void, array, ?string, etc.)
+
+    Added mixed type hint to untyped $displayData parameters (PHP 8.0+)
+
+    All public $property declarations updated to typed protected string/int/bool/null where appropriate
+
+    array_map(function($x){...}) closures replaced with arrow functions fn($x) =>
+
+    is_null() calls replaced with === null
+
+    str_repeat indentation logic simplified with max(0, $level - 1)
+
+    LayoutHelper: extracted duplicated empty($basePath) logic into a private resolvePath() method
+
+    Buffer: null-safe ?? '' guards added on all strlen() calls against potentially null buffers
+
+    Unreachable break statements after return in switch blocks removed
+
+    or die replaced with || die for consistency
+
+    Added Italian (it-IT) translation files: plg_system_filtermagic.ini and plg_system_filtermagic.sys.ini
+
 
 # FilterMagic
 
