@@ -28,7 +28,7 @@ class SubcategoryField extends ListField
 	 * @since  1.0.0
 	 */
 	// J6: dichiarazione typed e protected come da standard FormField J6
-	protected string $type = 'Subcategory';
+	protected $type = 'Subcategory';
 
 	/**
 	 * Method to get the field options for category.
