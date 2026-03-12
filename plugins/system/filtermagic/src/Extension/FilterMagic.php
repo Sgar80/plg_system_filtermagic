@@ -125,6 +125,13 @@ class FilterMagic extends CMSPlugin implements SubscriberInterface
 			$this->filterByTag($tags, $query);
 		}
 
+		// -- Filter by text
+		$text = $filters['filter_text'] ?? '';
+
+		if (!empty($text)) {
+			$this->filterByText($query, $text);
+		}
+
 		// Filter by custom fields. You are not expected to understand this.
 		$customFields = $this->getFlatFieldsList($category->id);
 
@@ -699,6 +706,31 @@ PHP,
 		$query->where('EXISTS(' . $subQuery . ')');
 	}
 
+	private function filterByText(QueryInterface $query, string $text): void
+	{
+		$db   = $this->getDatabase();
+		$text = trim($text);
+
+		if (empty($text)) {
+			return;
+		}
+
+		// Escapa metacaratteri LIKE per evitare wildcard involontarie
+		$text     = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $text);
+		$likeText = '%' . $text . '%';
+
+		$query->where(
+			'(' .
+				$db->quoteName('c.title') . ' LIKE :likeText OR ' .
+				$db->quoteName('c.introtext') . ' LIKE :likeText OR ' .
+				$db->quoteName('c.fulltext') . ' LIKE :likeText' .
+				')'
+		)->bind(':likeText', $likeText);
+	}
+
+
+
+
 	/**
 	 * Apply filtering by custom field
 	 *
@@ -774,46 +806,6 @@ PHP,
 	}
 
 	private function addJavaScript()
-	{
-		static $alreadyAdded = false;
-
-		if ($alreadyAdded) {
-			return;
-		}
-
-		$alreadyAdded = true;
-
-		$js = <<< JS
-
-document.addEventListener('DOMContentLoaded', function () {
-   document.querySelectorAll('button.plgSystemFilterMagicClear')
-       .forEach(function(elButton) {
-           elButton.addEventListener('click', function (e) {
-               const elTarget = e.currentTarget;
-               var   formId = null;
-               try {
-                   formId = elTarget.dataset.form;
-               } catch (e) {
-                   return;
-               }
-               const elForm  = document.getElementById(formId);
-               const elReset = document.getElementById(formId + '_reset');
-               if (!elForm || !elReset) {
-                   return;
-               }
-               elReset.value = 1;
-               elForm.submit();
-           })
-       }) 
-});
-JS;
-
-		/** @var \Joomla\CMS\Document\HtmlDocument $doc */
-		$doc = $this->getApplication()->getDocument();
-		$doc->getWebAssetManager()->addInlineScript($js);
-	}
-}
-n addJavaScript()
 	{
 		static $alreadyAdded = false;
 
