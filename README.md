@@ -2,6 +2,35 @@
 
 Port of the FilterMagic system plugin (original by Nicholas K. Dionysopoulos) to Joomla 6 (PHP 8.1+). All deprecated/removed API calls fixed, type safety improved throughout the codebase, and small bugs from the original corrected.
 
+## 🔧 New feature in v1.1 : Text Search Filter
+
+FilterMagic supports a free-text search filter that allows users to narrow down the article list by typing part of a title directly in the frontend filter form.
+
+### How it works
+
+The text filter performs a **case-insensitive partial match** against the following article fields:
+
+- `title`
+- `introtext`
+- `fulltext`
+
+This means that if a user types `"liguria"`, any article whose title or body contains that string (regardless of capitalisation) will be displayed.
+
+> **Note:** The text filter uses a SQL `LIKE` operator with `%value%` wildcards. It is not a full-text search engine and is not suitable for large datasets where performance is critical. It is recommended to use it in combination with other filters (subcategory, tag) to keep result sets manageable.
+
+### Adding the text filter to your filter file
+
+To enable the text search filter for a category, add the following field definition inside the `<fields name="filter">` container of your `filter_123.xml` file (where `123` is your category ID):
+
+````xml
+<field
+    name="filter_text"
+    type="text"
+    label="PLG_SYSTEM_FILTERMAGIC_FILTER_TEXT_LABEL"
+    description="PLG_SYSTEM_FILTERMAGIC_FILTER_TEXT_DESC"
+    hint="PLG_SYSTEM_FILTERMAGIC_FILTER_TEXT_HINT"
+/>
+
 ## 🔧 Joomla 6 Compatibility [compat]
 
 - Removed `#[ArrayShape]` — IDE-only annotation, not available in production
@@ -39,43 +68,6 @@ Port of the FilterMagic system plugin (original by Nicholas K. Dionysopoulos) to
 ## 🌍 Translations [i18n]
 
 - Added Italian (it-IT) translation files: `plg_system_filtermagic.ini` and `plg_system_filtermagic.sys.ini`
-
-## New feature in v1.1 : Text Search Filter
-
-FilterMagic supports a free-text search filter that allows users to narrow down the article list by typing part of a title directly in the frontend filter form.
-
-### How it works
-
-The text filter performs a **case-insensitive partial match** against the following article fields:
-
-- `title`
-- `introtext`
-- `fulltext`
-
-This means that if a user types `"liguria"`, any article whose title or body contains that string (regardless of capitalisation) will be displayed.
-
-> **Note:** The text filter uses a SQL `LIKE` operator with `%value%` wildcards. It is not a full-text search engine and is not suitable for large datasets where performance is critical. It is recommended to use it in combination with other filters (subcategory, tag) to keep result sets manageable.
-
-### Adding the text filter to your filter file
-
-To enable the text search filter for a category, add the following field definition inside the `<fields name="filter">` container of your `filter_123.xml` file (where `123` is your category ID):
-
-````xml
-<field
-    name="filter_text"
-    type="text"
-    label="PLG_SYSTEM_FILTERMAGIC_FILTER_TEXT_LABEL"
-    description="PLG_SYSTEM_FILTERMAGIC_FILTER_TEXT_DESC"
-    hint="PLG_SYSTEM_FILTERMAGIC_FILTER_TEXT_HINT"
-/>
-
-
-
-# FilterMagic
-
-Add custom filters to your Joomla categories
-
-<img src="screenshot.png" width="936" />
 
 ## Overview
 
