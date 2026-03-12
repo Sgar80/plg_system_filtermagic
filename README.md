@@ -1,6 +1,6 @@
 ## FilterMagic v1.1.0 – Joomla 6 Compatibility Port & Bug Fix Release
 
-Port of the FilterMagic system plugin (original by Nicholas K. Dionysopoulos) to Joomla 6 (PHP 8.1+). All deprecated/removed API calls fixed, type safety improved throughout the codebase, and several bugs from the original corrected.
+Port of the FilterMagic system plugin (original by Nicholas K. Dionysopoulos) to Joomla 6 (PHP 8.1+). All deprecated/removed API calls fixed, type safety improved throughout the codebase, and small bugs from the original corrected.
 
 ## 🔧 Joomla 6 Compatibility [compat]
 
