@@ -1,4 +1,4 @@
-# FilterMagic
+# FilterMagic v1.1
 
 Add custom filters to your Joomla 6 category pages.
 
