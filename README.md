@@ -1,4 +1,4 @@
- ## FilterMagic v1.1.0 – Joomla 6 Compatibility Port & Bug Fix Release
+## FilterMagic v1.1.0 – Joomla 6 Compatibility Port & Bug Fix Release
 
 Port of the FilterMagic system plugin (original by Nicholas K. Dionysopoulos) to Joomla 6 (PHP 8.1+). All deprecated/removed API calls fixed, type safety improved throughout the codebase, and small bugs from the original corrected.
 
@@ -39,6 +39,36 @@ Port of the FilterMagic system plugin (original by Nicholas K. Dionysopoulos) to
 ## 🌍 Translations [i18n]
 
 - Added Italian (it-IT) translation files: `plg_system_filtermagic.ini` and `plg_system_filtermagic.sys.ini`
+
+## New feature in v1.1 : Text Search Filter
+
+FilterMagic supports a free-text search filter that allows users to narrow down the article list by typing part of a title directly in the frontend filter form.
+
+### How it works
+
+The text filter performs a **case-insensitive partial match** against the following article fields:
+
+- `title`
+- `introtext`
+- `fulltext`
+
+This means that if a user types `"liguria"`, any article whose title or body contains that string (regardless of capitalisation) will be displayed.
+
+> **Note:** The text filter uses a SQL `LIKE` operator with `%value%` wildcards. It is not a full-text search engine and is not suitable for large datasets where performance is critical. It is recommended to use it in combination with other filters (subcategory, tag) to keep result sets manageable.
+
+### Adding the text filter to your filter file
+
+To enable the text search filter for a category, add the following field definition inside the `<fields name="filter">` container of your `filter_123.xml` file (where `123` is your category ID):
+
+````xml
+<field
+    name="filter_text"
+    type="text"
+    label="PLG_SYSTEM_FILTERMAGIC_FILTER_TEXT_LABEL"
+    description="PLG_SYSTEM_FILTERMAGIC_FILTER_TEXT_DESC"
+    hint="PLG_SYSTEM_FILTERMAGIC_FILTER_TEXT_HINT"
+/>
+
 
 
 # FilterMagic
@@ -133,7 +163,7 @@ A filter file is a standard Joomla XML form file with the filters inside the `<f
         </field>
     </fields>
 </form>
-```
+````
 
 ### Subcategory filter
 
@@ -142,6 +172,7 @@ It filters articles by their subcategory.
 The `<form>` tag **MUST** have the `addfieldprefix="Dionysopoulos\Plugin\System\FilterMagic\Field"` attribute if you are using a subcategory filter.
 
 The subcategory filter MUST be named `catid` and has the following definition
+
 ```xml
 <field
         name="catid"
@@ -157,10 +188,10 @@ The subcategory filter MUST be named `catid` and has the following definition
 
 The attributes you can / should modify are:
 
-* **`root`** You **MUST** set this to the category ID of your frontend menu item to only show its subcategories instead of all categories known to Joomla.
-* **`published`** A comma-separated list of publish statuses for categories you want to make available for selection. It is recommended to set this to `published="1"`, i.e. only allow published categories to be displayed.
-* **`language`** A comma-separated list of languages to filter categories by. By default, `*` is applied (all languages).
-* **`multiple`** Use `multiple="1"` to allow multipled subcategories to be selected.
+- **`root`** You **MUST** set this to the category ID of your frontend menu item to only show its subcategories instead of all categories known to Joomla.
+- **`published`** A comma-separated list of publish statuses for categories you want to make available for selection. It is recommended to set this to `published="1"`, i.e. only allow published categories to be displayed.
+- **`language`** A comma-separated list of languages to filter categories by. By default, `*` is applied (all languages).
+- **`multiple`** Use `multiple="1"` to allow multipled subcategories to be selected.
 
 Subcategories are automatically filtered by viewing access level, i.e. the user will not see any subcategories listed if they are not allowed to view them.
 
@@ -215,9 +246,9 @@ It has the following definition:
 
 Attributes:
 
-* `name` This must be the same as the name (NOT label!) of your custom field.
-* `type` This is ignored, but must be present for Joomla to parse the form file. Just use `type="custom"`.
-* `customfield` This MUST be present and set to 1: `customfield="1"`. It tells FilterMagic that this is a custom field filter.
+- `name` This must be the same as the name (NOT label!) of your custom field.
+- `type` This is ignored, but must be present for Joomla to parse the form file. Just use `type="custom"`.
+- `customfield` This MUST be present and set to 1: `customfield="1"`. It tells FilterMagic that this is a custom field filter.
 
 Everything else is passed as-is to the filter form.
 
@@ -260,4 +291,4 @@ The form itself is very simple. It just POSTs to the current URL.
 
 ## Under the hood
 
-Filter values are stored in the user session. Each category gets its own set of filter values storage. When the user logs out, or their session expires, filter values are reset. There is no provision for persisting filter preferences across logins. 
+Filter values are stored in the user session. Each category gets its own set of filter values storage. When the user logs out, or their session expires, filter values are reset. There is no provision for persisting filter preferences across logins.
