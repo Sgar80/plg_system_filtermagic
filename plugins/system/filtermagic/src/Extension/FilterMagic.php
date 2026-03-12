@@ -813,3 +813,43 @@ JS;
 		$doc->getWebAssetManager()->addInlineScript($js);
 	}
 }
+n addJavaScript()
+	{
+		static $alreadyAdded = false;
+
+		if ($alreadyAdded) {
+			return;
+		}
+
+		$alreadyAdded = true;
+
+		$js = <<< JS
+
+document.addEventListener('DOMContentLoaded', function () {
+   document.querySelectorAll('button.plgSystemFilterMagicClear')
+       .forEach(function(elButton) {
+           elButton.addEventListener('click', function (e) {
+               const elTarget = e.currentTarget;
+               var   formId = null;
+               try {
+                   formId = elTarget.dataset.form;
+               } catch (e) {
+                   return;
+               }
+               const elForm  = document.getElementById(formId);
+               const elReset = document.getElementById(formId + '_reset');
+               if (!elForm || !elReset) {
+                   return;
+               }
+               elReset.value = 1;
+               elForm.submit();
+           })
+       }) 
+});
+JS;
+
+		/** @var \Joomla\CMS\Document\HtmlDocument $doc */
+		$doc = $this->getApplication()->getDocument();
+		$doc->getWebAssetManager()->addInlineScript($js);
+	}
+}
