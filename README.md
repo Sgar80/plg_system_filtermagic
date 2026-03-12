@@ -1,39 +1,44 @@
-[compat][bugfix][refactor][i18n] FilterMagic v1.1.0 – Joomla 6 Compatibility Port & Bug Fix Release
+## FilterMagic v1.1.0 – Joomla 6 Compatibility Port & Bug Fix Release
 
-Port of the FilterMagic system plugin (original by Nicholas K. Dionysopoulos)
-to Joomla 6 (PHP 8.1+). All deprecated/removed API calls fixed, type safety
-improved throughout the codebase, and several bugs from the original corrected.
+Port of the FilterMagic system plugin (original by Nicholas K. Dionysopoulos) to Joomla 6 (PHP 8.1+). All deprecated/removed API calls fixed, type safety improved throughout the codebase, and several bugs from the original corrected.
 
-[compat] Removed #[ArrayShape] — IDE-only annotation, not available in production
-[compat] Removed QueryElement — no longer public API in J6; replaced with strpos((string) $query, 'WHERE')
-[compat] Fixed Registry namespace: Joomla\CMS\HTML\Registry → Joomla\Registry\Registry
-[compat] Replaced Factory::getUser() with Factory::getApplication()->getIdentity() (null-safe)
-[compat] Updated type hint DatabaseDriver → DatabaseInterface
-[compat] Service provider: removed unused MVCComponent import, added return types to closures
-[compat] XML manifest: added targetplatform J6.* and php_minimum 8.1
-[compat] Removed deprecated JNO/JYES option keys from XML config
+## 🔧 Joomla 6 Compatibility [compat]
 
-[bugfix] SubcategoryField: fixed bind param typo filter_access → filter.access
-[bugfix] TagsField: renamed $isNested → $isNestedMode to avoid collision with isNested() method
-[bugfix] Buffer: fixed SEEK_SET boundary condition from < to <= strlen()
-[bugfix] TagsField: replaced loose == comparison with strict (int) ===
-[bugfix] Layout form.php: Uri::current() and dynamic form ID now escaped with htmlspecialchars()
-[bugfix] Layout fields.php: $field->label and data-showon JSON now properly escaped
-[bugfix] SubcategoryField: removed redundant double $options = [] declaration
+- Removed `#[ArrayShape]` — IDE-only annotation, not available in production
+- Removed `QueryElement` — no longer public API in J6; replaced with `strpos((string) $query, 'WHERE')`
+- Fixed Registry namespace: `Joomla\CMS\HTML\Registry` → `Joomla\Registry\Registry`
+- Replaced `Factory::getUser()` with `Factory::getApplication()->getIdentity()` (null-safe)
+- Updated type hint: `DatabaseDriver` → `DatabaseInterface`
+- Service provider: removed unused `MVCComponent` import, added return types to closures
+- XML manifest: added `<targetplatform name="joomla" version="6.*" />` and `<php_minimum>8.1</php_minimum>`
+- Removed deprecated `JNO`/`JYES` option keys from XML config
 
-[refactor] Added missing return types across all classes
-[refactor] Added mixed type hint to untyped $displayData parameters (PHP 8.0+)
-[refactor] Public properties updated to typed protected where appropriate
-[refactor] array_map closures replaced with arrow functions fn() =>
-[refactor] is_null() replaced with === null
-[refactor] str_repeat simplified with max(0, $level - 1)
-[refactor] LayoutHelper: extracted duplicated empty($basePath) logic into resolvePath()
-[refactor] Buffer: added null-safe ?? '' guards on all strlen() calls
-[refactor] Removed unreachable break statements after return in switch blocks
-[refactor] or die replaced with || die
+## 🐛 Bug Fixes [bugfix]
 
-[i18n] Added Italian (it-IT) translation files: plg_system_filtermagic.ini and .sys.ini
+- `SubcategoryField`: fixed bind param typo `filter_access` → `filter.access` (access filter was silently broken)
+- `TagsField`: renamed `$isNested` → `$isNestedMode` to avoid collision with `isNested()` method
+- `Buffer`: fixed `SEEK_SET` boundary condition from `< strlen()` to `<= strlen()`
+- `TagsField`: replaced loose `==` comparison with strict `(int) $option->value === $id`
+- Layout `form.php`: `Uri::current()` and dynamic form ID now escaped with `htmlspecialchars()`
+- Layout `fields.php`: `$field->label` and `data-showon` JSON now properly escaped
+- `SubcategoryField`: removed redundant double `$options = []` declaration
 
+## ✅ Code Quality [refactor]
+
+- Added missing return types across all classes
+- Added `mixed` type hint to untyped `$displayData` parameters (PHP 8.0+)
+- Public properties updated to typed `protected` where appropriate
+- `array_map` closures replaced with arrow functions `fn() =>`
+- `is_null()` replaced with `=== null`
+- `str_repeat` simplified with `max(0, $level - 1)`
+- `LayoutHelper`: extracted duplicated `empty($basePath)` logic into `resolvePath()`
+- `Buffer`: added null-safe `?? ''` guards on all `strlen()` calls
+- Removed unreachable `break` statements after `return` in `switch` blocks
+- `or die` replaced with `|| die`
+
+## 🌍 Translations [i18n]
+
+- Added Italian (it-IT) translation files: `plg_system_filtermagic.ini` and `plg_system_filtermagic.sys.ini`
 
 
 # FilterMagic
