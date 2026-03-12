@@ -1,49 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <form addfieldprefix="Dionysopoulos\Plugin\System\FilterMagic\Field">
-    <fields name="filter">
+	<fields name="filter">
 
-        <field
-                name="catid"
-                type="subcategory"
-                label="JCATEGORY"
-                hint="JOPTION_SELECT_CATEGORY"
-                published="1"
-                language="*"
-                root="8"
-        />
+		<field name="catid" type="subcategory" label="JCATEGORY" hint="JOPTION_SELECT_CATEGORY" published="1" language="*" root="8" />
 
-	<field
-		name="filter_text"
-		type="text"
-		label="PLG_SYSTEM_FILTERMAGIC_FILTER_TEXT_LABEL"
-		description="PLG_SYSTEM_FILTERMAGIC_FILTER_TEXT_DESC"
-		hint="PLG_SYSTEM_FILTERMAGIC_FILTER_TEXT_HINT"
-	/>
+		<field name="filter_text" type="text" label="PLG_SYSTEM_FILTERMAGIC_FILTER_TEXT_LABEL" description="PLG_SYSTEM_FILTERMAGIC_FILTER_TEXT_DESC" hint="PLG_SYSTEM_FILTERMAGIC_FILTER_TEXT_HINT" />
+
+		<field name="tag" type="tags" label="JTAG" hint="JOPTION_SELECT_TAG" multiple="false" mode="nested" custom="false">
+			<option value="">JOPTION_SELECT_TAG</option>
+		</field>
+
+		<field name="campo-di-test" type="custom" customfield="1" default="" class="" layout="joomla.form.field.list">
+			<option value="">- campo-di-test -</option>
+		</field>
 
 
-        <field
-                name="tag"
-                type="tags"
-                label="JTAG"
-                hint="JOPTION_SELECT_TAG"
-                multiple="false"
-                mode="nested"
-                custom="false"
-        >
-            <option value="">JOPTION_SELECT_TAG</option>
-        </field>
-
-        <field
-                name="campo-di-test"
-                type="custom"
-                customfield="1"
-                default=""
-                class=""
-                layout="joomla.form.field.list"
-        >
-            <option value="">- campo-di-test -</option>
-        </field>
-
-
-    </fields>
+	</fields>
 </form>
