@@ -4,7 +4,7 @@ Port of the FilterMagic system plugin (original by Nicholas K. Dionysopoulos) to
 
 ## 🔧 New feature in v1.1 : Text Search Filter
 
-FilterMagic supports a free-text search filter that allows users to narrow down the article list by typing part of a title directly in the frontend filter form.
+FilterMagic v1.1 supports a free-text search filter that allows users to narrow down the article list by typing part of a title directly in the frontend filter form.
 
 ### How it works
 
