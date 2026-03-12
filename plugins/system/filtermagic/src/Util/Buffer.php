@@ -1,177 +1,190 @@
 <?php
+
 /**
  * @package   FilterMagic
  * @copyright Copyright (c)2022-2023 Nicholas K. Dionysopoulos
+ * @modified  Joomla 6 compatibility port
  * @license   GNU General Public License version 3, or later
  */
 
 namespace Dionysopoulos\Plugin\System\FilterMagic\Util;
 
-defined('_JEXEC') or die;
+defined('_JEXEC') || die;
 
 /**
- * Registers a plgSystemJoomlaSVGBuffer:// stream wrapper
+ * Registers a plgSystemFilterMagic:// stream wrapper.
+ *
+ * Used to hot-patch PHP source in memory without writing to disk permanently.
  *
  * @since 1.0.0
  */
 class Buffer
 {
+	/**
+	 * In-memory buffer storage, keyed by stream name.
+	 *
+	 * @var    array<string, string|null>
+	 * @since  1.0.0
+	 */
 	public static array $buffers = [];
 
+	/**
+	 * Cached result of wrapper registration capability check.
+	 *
+	 * @var    bool|null
+	 * @since  1.0.0
+	 */
 	public static ?bool $canRegisterWrapper = null;
 
 	/**
-	 * Stream position
+	 * Current stream position.
 	 *
-	 * @var    integer
+	 * @var    int
 	 * @since  1.0.0
 	 */
-	public $position = 0;
+	public int $position = 0;
 
 	/**
-	 * Buffer name
+	 * Buffer name (derived from stream URL host + path).
 	 *
-	 * @var    string
+	 * @var    string|null
 	 * @since  1.0.0
 	 */
-	public $name = null;
+	public ?string $name = null;
 
 	/**
-	 * Should I register the fof:// stream wrapper
+	 * Check whether the plgSystemFilterMagic:// stream wrapper can be registered.
 	 *
-	 * @return  bool  True if the stream wrapper can be registered
+	 * @return  bool
 	 * @since   1.0.0
 	 */
 	public static function canRegisterWrapper(): bool
 	{
-		if (!is_null(static::$canRegisterWrapper))
-		{
+		if (static::$canRegisterWrapper !== null) {
 			return static::$canRegisterWrapper;
 		}
 
 		static::$canRegisterWrapper = false;
 
-		// Maybe the host has disabled registering stream wrappers altogether?
-		if (!function_exists('stream_wrapper_register'))
-		{
+		if (!function_exists('stream_wrapper_register')) {
 			return false;
 		}
 
-		// Check for Suhosin
-		if (function_exists('extension_loaded'))
-		{
+		// Detect Suhosin extension
+		$hasSuhosin = false;
+
+		if (function_exists('extension_loaded')) {
 			$hasSuhosin = extension_loaded('suhosin');
 		}
-		else
-		{
-			$hasSuhosin = -1; // Can't detect
-		}
 
-		if ($hasSuhosin !== true)
-		{
+		if ($hasSuhosin === false) {
 			$hasSuhosin = defined('SUHOSIN_PATCH') ? true : -1;
 		}
 
-		if ($hasSuhosin === -1)
-		{
-			if (function_exists('ini_get'))
-			{
-				$hasSuhosin = false;
-
-				$maxIdLength = ini_get('suhosin.session.max_id_length');
-
-				if ($maxIdLength !== false)
-				{
-					$hasSuhosin = ini_get('suhosin.session.max_id_length') !== '';
-				}
-			}
+		if ($hasSuhosin === -1 && function_exists('ini_get')) {
+			$maxIdLength = ini_get('suhosin.session.max_id_length');
+			$hasSuhosin  = ($maxIdLength !== false && $maxIdLength !== '') ? true : false;
 		}
 
-		// If we can't detect whether Suhosin is installed we won't proceed to prevent a White Screen of Death
-		if ($hasSuhosin === -1)
-		{
+		// Can't detect Suhosin — bail out to prevent WSoD
+		if ($hasSuhosin === -1) {
 			return false;
 		}
 
-		// If Suhosin is installed but ini_get is not available we won't proceed to prevent a WSoD
-		if ($hasSuhosin && !function_exists('ini_get'))
-		{
+		// Suhosin present but ini_get unavailable — bail out
+		if ($hasSuhosin === true && !function_exists('ini_get')) {
 			return false;
 		}
 
-		// If Suhosin is installed check if fof:// is whitelisted
-		if ($hasSuhosin)
-		{
+		// Suhosin present — check whitelist
+		if ($hasSuhosin === true) {
 			$whiteList = ini_get('suhosin.executor.include.whitelist');
 
-			// Nothing in the whitelist? I can't go on, sorry.
-			if (empty($whiteList))
-			{
+			if (empty($whiteList)) {
 				return false;
 			}
 
-			$whiteList = explode(',', $whiteList);
-			$whiteList = array_map(function ($x) {
-				return trim($x);
-			}, $whiteList);
+			// J6/PHP8: arrow function invece di closure anonima
+			$whiteList = array_map(fn(string $x) => trim($x), explode(',', $whiteList));
 
-			if (!in_array('fof://', $whiteList))
-			{
+			if (!in_array('fof://', $whiteList, true)) {
 				return false;
 			}
 		}
 
 		static::$canRegisterWrapper = true;
 
-		return static::$canRegisterWrapper;
+		return true;
 	}
 
 	/**
-	 * Function to open file or url
+	 * Open the stream.
 	 *
-	 * @param   string   $path          The URL that was passed
-	 * @param   string   $mode          Mode used to open the file @see fopen
-	 * @param   integer  $options       Flags used by the API, may be STREAM_USE_PATH and
-	 *                                  STREAM_REPORT_ERRORS
-	 * @param   string  &$opened_path   Full path of the resource. Used with STREAM_USE_PATH option
+	 * @param   string   $path         The stream URL
+	 * @param   string   $mode         Mode used to open the file
+	 * @param   int      $options      Stream API flags
+	 * @param   string  &$opened_path  Full path of the resource
 	 *
-	 * @return  boolean
+	 * @return  bool
 	 * @since   1.0.0
-	 *
-	 * @see     streamWrapper::stream_open
 	 */
-	public function stream_open($path, $mode, $options, &$opened_path)
+	public function stream_open(string $path, string $mode, int $options, ?string &$opened_path): bool
 	{
 		$url            = parse_url($path);
-		$this->name     = $url['host'] . ($url['path'] ?? '');
+		$this->name     = ($url['host'] ?? '') . ($url['path'] ?? '');
 		$this->position = 0;
 
-		if (!isset(static::$buffers[$this->name]))
-		{
+		if (!isset(static::$buffers[$this->name])) {
 			static::$buffers[$this->name] = null;
 		}
 
 		return true;
 	}
 
-	public function stream_set_option($option, $arg1 = null, $arg2 = null)
+	/**
+	 * Set stream options (not supported).
+	 *
+	 * @param   int       $option  Option code
+	 * @param   int|null  $arg1    First argument
+	 * @param   int|null  $arg2    Second argument
+	 *
+	 * @return  bool
+	 * @since   1.0.0
+	 */
+	public function stream_set_option(int $option, ?int $arg1 = null, ?int $arg2 = null): bool
 	{
 		return false;
 	}
 
-	public function unlink($path)
+	/**
+	 * Unlink (delete) a stream buffer.
+	 *
+	 * @param   string  $path  The stream URL
+	 *
+	 * @return  void
+	 * @since   1.0.0
+	 */
+	public function unlink(string $path): void
 	{
 		$url  = parse_url($path);
-		$name = $url['host'];
+		$name = $url['host'] ?? '';
 
-		if (isset(static::$buffers[$name]))
-		{
-			unset (static::$buffers[$name]);
+		if (isset(static::$buffers[$name])) {
+			unset(static::$buffers[$name]);
 		}
 	}
 
-	public function stream_stat()
+	/**
+	 * Return stream stat information.
+	 *
+	 * @return  array
+	 * @since   1.0.0
+	 */
+	public function stream_stat(): array
 	{
+		// Null-safe strlen: buffer may be null before first write
+		$size = strlen(static::$buffers[$this->name] ?? '');
+
 		return [
 			'dev'     => 0,
 			'ino'     => 0,
@@ -180,7 +193,7 @@ class Buffer
 			'uid'     => 0,
 			'gid'     => 0,
 			'rdev'    => 0,
-			'size'    => strlen(static::$buffers[$this->name]),
+			'size'    => $size,
 			'atime'   => 0,
 			'mtime'   => 0,
 			'ctime'   => 0,
@@ -190,41 +203,36 @@ class Buffer
 	}
 
 	/**
-	 * Read stream
+	 * Read from the stream.
 	 *
-	 * @param   integer  $count  How many bytes of data from the current position should be returned.
+	 * @param   int  $count  Number of bytes to read
 	 *
-	 * @return  mixed    The data from the stream up to the specified number of bytes (all data if
-	 *                   the total number of bytes in the stream is less than $count. Null if
-	 *                   the stream is empty.
-	 *
-	 * @see     streamWrapper::stream_read
+	 * @return  string
 	 * @since   1.0.0
 	 */
-	public function stream_read($count)
+	public function stream_read(int $count): string
 	{
-		$ret            = substr(static::$buffers[$this->name], $this->position, $count);
+		$buffer         = static::$buffers[$this->name] ?? '';
+		$ret            = substr($buffer, $this->position, $count);
 		$this->position += strlen($ret);
 
 		return $ret;
 	}
 
 	/**
-	 * Write stream
+	 * Write to the stream.
 	 *
-	 * @param   string  $data  The data to write to the stream.
+	 * @param   string  $data  Data to write
 	 *
-	 * @return  integer
-	 *
-	 * @see     streamWrapper::stream_write
+	 * @return  int  Number of bytes written
 	 * @since   1.0.0
 	 */
-	public function stream_write($data)
+	public function stream_write(string $data): int
 	{
-		static::$buffers[$this->name] = static::$buffers[$this->name] ?? '';
+		$buffer = static::$buffers[$this->name] ?? '';
+		$left   = substr($buffer, 0, $this->position);
+		$right  = substr($buffer, $this->position + strlen($data));
 
-		$left                         = substr(static::$buffers[$this->name], 0, $this->position);
-		$right                        = substr(static::$buffers[$this->name], $this->position + strlen($data));
 		static::$buffers[$this->name] = $left . $data . $right;
 		$this->position               += strlen($data);
 
@@ -232,85 +240,67 @@ class Buffer
 	}
 
 	/**
-	 * Function to get the current position of the stream
+	 * Get the current stream position.
 	 *
-	 * @return  integer
-	 *
-	 * @see     streamWrapper::stream_tell
+	 * @return  int
 	 * @since   1.0.0
 	 */
-	public function stream_tell()
+	public function stream_tell(): int
 	{
 		return $this->position;
 	}
 
 	/**
-	 * Function to test for end of file pointer
+	 * Check if end of stream is reached.
 	 *
-	 * @return  boolean  True if the pointer is at the end of the stream
-	 *
-	 * @see     streamWrapper::stream_eof
+	 * @return  bool
 	 * @since   1.0.0
 	 */
-	public function stream_eof()
+	public function stream_eof(): bool
 	{
-		return $this->position >= strlen(static::$buffers[$this->name]);
+		return $this->position >= strlen(static::$buffers[$this->name] ?? '');
 	}
 
 	/**
-	 * The read write position updates in response to $offset and $whence
+	 * Seek to a position in the stream.
 	 *
-	 * @param   integer  $offset  The offset in bytes
-	 * @param   integer  $whence  Position the offset is added to
-	 *                            Options are SEEK_SET, SEEK_CUR, and SEEK_END
+	 * @param   int  $offset  Byte offset
+	 * @param   int  $whence  SEEK_SET, SEEK_CUR, or SEEK_END
 	 *
-	 * @return  boolean  True if updated
-	 *
-	 * @see     streamWrapper::stream_seek
+	 * @return  bool
 	 * @since   1.0.0
 	 */
-	public function stream_seek($offset, $whence)
+	public function stream_seek(int $offset, int $whence): bool
 	{
-		switch ($whence)
-		{
+		$length = strlen(static::$buffers[$this->name] ?? '');
+
+		switch ($whence) {
 			case SEEK_SET:
-				if ($offset < strlen(static::$buffers[$this->name]) && $offset >= 0)
-				{
+				if ($offset >= 0 && $offset <= $length) {
 					$this->position = $offset;
 
 					return true;
 				}
-				else
-				{
-					return false;
-				}
-				break;
+
+				return false;
 
 			case SEEK_CUR:
-				if ($offset >= 0)
-				{
+				if ($offset >= 0) {
 					$this->position += $offset;
 
 					return true;
 				}
-				else
-				{
-					return false;
-				}
-				break;
+
+				return false;
 
 			case SEEK_END:
-				if (strlen(static::$buffers[$this->name]) + $offset >= 0)
-				{
-					$this->position = strlen(static::$buffers[$this->name]) + $offset;
+				if ($length + $offset >= 0) {
+					$this->position = $length + $offset;
 
 					return true;
 				}
-				else
-				{
-					return false;
-				}
-				break;
+
+				return false;
 
 			default:
 				return false;
@@ -318,7 +308,6 @@ class Buffer
 	}
 }
 
-if (Buffer::canRegisterWrapper())
-{
+if (Buffer::canRegisterWrapper()) {
 	stream_wrapper_register('plgSystemFilterMagic', Buffer::class);
 }

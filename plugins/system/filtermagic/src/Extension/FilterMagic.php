@@ -1,7 +1,9 @@
 <?php
+
 /**
  * @package   FilterMagic
  * @copyright Copyright (c)2022-2023 Nicholas K. Dionysopoulos
+ * @modified  Joomla 6 compatibility port
  * @license   GNU General Public License version 3, or later
  */
 
@@ -11,20 +13,18 @@ defined('_JEXEC') || die;
 
 use Dionysopoulos\Plugin\System\FilterMagic\Helper\LayoutHelper;
 use DOMElement;
-use JetBrains\PhpStorm\ArrayShape;
 use Joomla\CMS\Application\SiteApplication;
 use Joomla\CMS\Categories\CategoryNode;
 use Joomla\CMS\Factory;
 use Joomla\CMS\Form\Form;
 use Joomla\CMS\Form\FormField;
 use Joomla\CMS\Form\FormHelper;
-use Joomla\CMS\HTML\Registry;
+use Joomla\Registry\Registry;
 use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\Component\Content\Site\Model\ArticlesModel;
 use Joomla\Component\Content\Site\Model\CategoryModel;
 use Joomla\Component\Fields\Administrator\Helper\FieldsHelper;
 use Joomla\Database\DatabaseAwareTrait;
-use Joomla\Database\Query\QueryElement;
 use Joomla\Database\QueryInterface;
 use Joomla\Event\Event;
 use Joomla\Event\SubscriberInterface;
@@ -72,16 +72,14 @@ class FilterMagic extends CMSPlugin implements SubscriberInterface
 	{
 		$category = $categoryModel->getCategory();
 
-		if (!$category instanceof CategoryNode)
-		{
+		if (!$category instanceof CategoryNode) {
 			return;
 		}
 
 		// Check category ID and determine which filter document to load
 		$form = $this->getForm($category->id);
 
-		if ($form === null)
-		{
+		if ($form === null) {
 			return;
 		}
 
@@ -89,8 +87,7 @@ class FilterMagic extends CMSPlugin implements SubscriberInterface
 		$filters    = (array) $form->getData()->get('filter');
 		$hasFilters = array_reduce($filters, fn($carry, $value) => $carry || !empty($value), false);
 
-		if (!$hasFilters)
-		{
+		if (!$hasFilters) {
 			return;
 		}
 
@@ -117,26 +114,22 @@ class FilterMagic extends CMSPlugin implements SubscriberInterface
 		// -- Filter by subcategory
 		$subCatId = $filters['catid'] ?? null;
 
-		if (!empty($subCatId))
-		{
+		if (!empty($subCatId)) {
 			$this->filterBySubcategory($query, $subCatId);
 		}
 
 		// -- Filter by tag
 		$tags = $filters['tag'] ?? '';
 
-		if (!empty($tags))
-		{
+		if (!empty($tags)) {
 			$this->filterByTag($tags, $query);
 		}
 
 		// Filter by custom fields. You are not expected to understand this.
 		$customFields = $this->getFlatFieldsList($category->id);
 
-		foreach ($customFields as $field)
-		{
-			if (!isset($filters[$field->name]) || $filters[$field->name] === '')
-			{
+		foreach ($customFields as $field) {
+			if (!isset($filters[$field->name]) || $filters[$field->name] === '') {
 				continue;
 			}
 
@@ -146,8 +139,8 @@ class FilterMagic extends CMSPlugin implements SubscriberInterface
 		}
 
 		// If I did not create a WHERE in my query bail out.
-		if (!($query->where instanceof QueryElement) || count($query->where->getElements()) === 0)
-		{
+		// J6: Removed direct access to internal query object; use string cast instead.
+		if (strpos((string) $query, 'WHERE') === false) {
 			return;
 		}
 
@@ -176,16 +169,14 @@ class FilterMagic extends CMSPlugin implements SubscriberInterface
 		 */
 		[$context, $item, $params,] = array_values($event->getArguments());
 
-		if ($context !== 'com_content.categories')
-		{
+		if ($context !== 'com_content.categories') {
 			return;
 		}
 
 		// Try to load a filter document
 		$form = $this->getForm($item->id);
 
-		if ($form === null)
-		{
+		if ($form === null) {
 			return;
 		}
 
@@ -217,8 +208,7 @@ class FilterMagic extends CMSPlugin implements SubscriberInterface
 	 */
 	public function prepare(Event $event)
 	{
-		if (!$this->getApplication()->isClient('site'))
-		{
+		if (!$this->getApplication()->isClient('site')) {
 			return;
 		}
 
@@ -231,8 +221,7 @@ class FilterMagic extends CMSPlugin implements SubscriberInterface
 			$option !== 'com_content'
 			|| $view !== 'category'
 			|| $format !== 'html'
-		)
-		{
+		) {
 			return;
 		}
 
@@ -256,12 +245,12 @@ class FilterMagic extends CMSPlugin implements SubscriberInterface
 			<<< PHP
 
 \\Joomla\\CMS\\Factory::getApplication()->bootPlugin('filtermagic', 'system')
-	->handleModel(\$model, \$this);
+    ->handleModel(\$model, \$this);
 
 \$this->_articles = \$model->getItems();
 
-PHP
-			, $phpContent
+PHP,
+			$phpContent
 		);
 
 		$bufferLocation = 'plgSystemFilterMagic://ContentCategoryModel.php';
@@ -281,8 +270,7 @@ PHP
 	 */
 	private function getFlatFieldsList(int $catId): array
 	{
-		if (isset($this->flatFields[$catId]))
-		{
+		if (isset($this->flatFields[$catId])) {
 			return $this->flatFields[$catId];
 		}
 
@@ -310,8 +298,7 @@ PHP
 	private function resolveSubformFields(array $fields): array
 	{
 		// Make sure we have a cache of all known fields.
-		if (self::$allFields === null)
-		{
+		if (self::$allFields === null) {
 			self::$allFields = FieldsHelper::getFields('com_content.article', null, false, null, true);
 			$keys            = array_map(fn(object $f) => $f->id, self::$allFields);
 			self::$allFields = array_combine($keys, self::$allFields);
@@ -320,11 +307,9 @@ PHP
 		$remove = [];
 		$add    = [];
 
-		foreach ($fields as $field)
-		{
+		foreach ($fields as $field) {
 			// If the field is not a subform or inception field we have nothing to resolve.
-			if (!in_array($field->type, ['subform', 'inception']))
-			{
+			if (!in_array($field->type, ['subform', 'inception'])) {
 				continue;
 			}
 
@@ -344,8 +329,7 @@ PHP
 			$subFields = array_filter($subFields);
 
 			// Mark the new fields for adding to the list
-			foreach ($subFields as $f)
-			{
+			foreach ($subFields as $f) {
 				// We add a parent_field_id so we can use this easily for searching
 				$f->parent_field_id = $field->id;
 				$add[$f->id]        = $f;
@@ -353,23 +337,19 @@ PHP
 		}
 
 		// Remove the subform/inception fields we processed
-		foreach ($remove as $id)
-		{
-			if (isset($fields[$id]))
-			{
+		foreach ($remove as $id) {
+			if (isset($fields[$id])) {
 				unset($fields[$id]);
 			}
 		}
 
 		// Add any new fields we discovered in the subforms
-		foreach ($add as $addField)
-		{
+		foreach ($add as $addField) {
 			$fields[$addField->id] = $addField;
 		}
 
 		// If we did resolve any subform / inception fields, resolve any possibly nested subforms
-		if (!empty($add))
-		{
+		if (!empty($add)) {
 			$fields = $this->resolveSubformFields($fields);
 		}
 
@@ -387,8 +367,7 @@ PHP
 	 */
 	private function getForm(int $catId): ?Form
 	{
-		if (isset($this->forms[$catId]))
-		{
+		if (isset($this->forms[$catId])) {
 			return $this->forms[$catId];
 		}
 
@@ -401,20 +380,17 @@ PHP
 		];
 		$filename        = 'filter_' . $catId . '.xml';
 
-		foreach ($possibleFolders as $folder)
-		{
+		foreach ($possibleFolders as $folder) {
 			$formPath = $folder . '/' . $filename;
 
-			if (file_exists($formPath) && is_file($formPath))
-			{
+			if (file_exists($formPath) && is_file($formPath)) {
 				break;
 			}
 
 			$formPath = null;
 		}
 
-		if ($formPath === null)
-		{
+		if ($formPath === null) {
 			return $this->forms[$catId] = null;
 		}
 
@@ -427,10 +403,8 @@ PHP
 		// Get the form fields which need to be replaced
 		$filterCustomFieldNames = [];
 
-		foreach ($form->getGroup('filter') as $subkey => $field)
-		{
-			if ($field->getAttribute('customfield', null) !== '1')
-			{
+		foreach ($form->getGroup('filter') as $subkey => $field) {
+			if ($field->getAttribute('customfield', null) !== '1') {
 				continue;
 			}
 
@@ -447,10 +421,8 @@ PHP
 		$prefix    = 'filtermagic.' . $catId . '.';
 
 		// Process each field, adding options to custom field filters and collecting form data
-		if (!$reset)
-		{
-			foreach ($form->getGroup('filter') as $subkey => $field)
-			{
+		if (!$reset) {
+			foreach ($form->getGroup('filter') as $subkey => $field) {
 				// Get the data from the request, falling back to the user state. Save to user state.
 				$datum = $innerData[$field->fieldname] ??
 					$app->getUserState($prefix . $subkey, '');
@@ -459,11 +431,8 @@ PHP
 			}
 
 			$form->bind(['filter' => $data]);
-		}
-		else
-		{
-			foreach ($form->getGroup('filter') as $subkey => $field)
-			{
+		} else {
+			foreach ($form->getGroup('filter') as $subkey => $field) {
 				$app->setUserState($prefix . $subkey, null);
 			}
 		}
@@ -486,8 +455,7 @@ PHP
 	{
 		$fields = $this->getFlatFieldsList($catId);
 
-		if (empty($fields))
-		{
+		if (empty($fields)) {
 			return;
 		}
 
@@ -502,33 +470,28 @@ PHP
 			$fields,
 			function ($field) use ($fieldTypes, $fieldNames, $form) {
 				// Skip over if the field type is not available
-				if (!array_key_exists($field->type, $fieldTypes))
-				{
+				if (!array_key_exists($field->type, $fieldTypes)) {
 					return false;
 				}
 
 				// Only use the specific fields we were asked to include
-				if (!in_array($field->name, $fieldNames))
-				{
+				if (!in_array($field->name, $fieldNames)) {
 					return false;
 				}
 
 				// Skip over if the field is not defined in the form
 				$formField = $form->getField($field->name, 'filter');
 
-				if (empty($formField))
-				{
+				if (empty($formField)) {
 					return false;
 				}
 
 				// Add the lookup path for the field and rule, if available
-				if ($path = $fieldTypes[$field->type]['path'])
-				{
+				if ($path = $fieldTypes[$field->type]['path']) {
 					FormHelper::addFieldPath($path);
 				}
 
-				if ($path = $fieldTypes[$field->type]['rules'])
-				{
+				if ($path = $fieldTypes[$field->type]['rules']) {
 					FormHelper::addRulePath($path);
 				}
 
@@ -536,8 +499,7 @@ PHP
 			}
 		);
 
-		if (empty($fields))
-		{
+		if (empty($fields)) {
 			return;
 		}
 
@@ -547,23 +509,18 @@ PHP
 			->createModel('Groups', 'Administrator', ['ignore_request' => true]);
 		$model->setState('filter.context', 'com_content.article');
 
-		foreach ($fields as $field)
-		{
-			try
-			{
+		foreach ($fields as $field) {
+			try {
 				Factory::getApplication()->triggerEvent('onCustomFieldsPrepareDom', [$field, $fieldsNode, $form]);
-			}
-			catch (\Exception $e)
-			{
+			} catch (\Exception $e) {
 				Factory::getApplication()->enqueueMessage($e->getMessage(), 'error');
 			}
 		}
 
-		// Post-process the generated XML, injecting attributes and options from the filter form
+        // Post-process the generated XML, injecting attributes and options from the filter form
 		/** @var DOMElement $domNode */
-		foreach ($fieldsNode->childNodes as $domNode)
-		{
-			// Get the attributes defined in the form, except 'name' and 'customfield'
+		foreach ($fieldsNode->childNodes as $domNode) {
+            // Get the attributes defined in the form, except 'name' and 'customfield'
 			/** @var FormField $formField */
 			$formField = $form->getField($domNode->getAttribute('name'), 'filter');
 			extract($this->extractOverrides($formField));
@@ -577,14 +534,12 @@ PHP
 			);
 
 			// Apply the attributes defined in the form
-			foreach ($attributes as $k => $v)
-			{
+			foreach ($attributes as $k => $v) {
 				$domNode->setAttribute($k, $v);
 			}
 
 			// Apply extra options
-			foreach ($options as $optionDefinition)
-			{
+			foreach ($options as $optionDefinition) {
 				[$value, $label] = $optionDefinition;
 				$option              = $domNode->appendChild(new DOMElement('option'));
 				$option->textContent = $label;
@@ -605,7 +560,6 @@ PHP
 	 *
 	 * @since   1.0.0
 	 */
-	#[ArrayShape(['attributes' => "array", 'options' => "array"])]
 	private function extractOverrides(FormField $field): array
 	{
 		$refObj  = new \ReflectionObject($field);
@@ -619,13 +573,11 @@ PHP
 			'options'    => [],
 		];
 
-		foreach ($element->attributes() as $key => $value)
-		{
+		foreach ($element->attributes() as $key => $value) {
 			$ret['attributes'][(string) $key] = (string) $value;
 		}
 
-		foreach ($element->xpath('option') as $option)
-		{
+		foreach ($element->xpath('option') as $option) {
 			$ret['options'][] = [
 				(string) $option['value'],
 				(string) $option,
@@ -650,8 +602,7 @@ PHP
 		$strict = $this->params->get('category_strict', 1) == 1;
 
 		// Single category, strict filtering
-		if (!is_array($subCatId) && $strict)
-		{
+		if (!is_array($subCatId) && $strict) {
 			$query->where($db->quoteName('catid') . ' = :catid')
 				->bind(':catid', $subCatId);
 
@@ -659,8 +610,7 @@ PHP
 		}
 
 		// Single category, lax (subcategories inclusive) filtering
-		if (!is_array($subCatId) && !$strict)
-		{
+		if (!is_array($subCatId) && !$strict) {
 			$subQuery = $db->getQuery(true)
 				->select('1')
 				->from($db->quoteName('#__categories', 'fcat'))
@@ -671,9 +621,9 @@ PHP
 						$db->quoteName('fcat.id') . ' = ' . $db->quote((int) $subCatId),
 						'(' .
 							$db->quoteName('cat.lft') . ' >= ' . $db->quoteName('fcat.lft') .
-						') AND (' .
+							') AND (' .
 							$db->quoteName('cat.rgt') . ' <= ' . $db->quoteName('fcat.rgt') .
-						')'
+							')'
 					],
 				);
 
@@ -689,13 +639,11 @@ PHP
 		$subCatId = array_filter($subCatId, fn($x) => $x > 0);
 
 		// Catch the case of no valid filters.
-		if (empty($subCatId))
-		{
+		if (empty($subCatId)) {
 			return;
 		}
 
-		if ($strict)
-		{
+		if ($strict) {
 			// Multiple categories, strict (subcategories inclusive) filtering
 			$query->whereIn($db->quoteName('catid'), $subCatId);
 
@@ -713,10 +661,10 @@ PHP
 				[
 					$db->quoteName('fcat.id') . ' IN(' . implode(',', $subCatId) . ')',
 					'(' .
-					$db->quoteName('cat.lft') . ' >= ' . $db->quoteName('fcat.lft') .
-					') AND (' .
-					$db->quoteName('cat.rgt') . ' <= ' . $db->quoteName('fcat.rgt') .
-					')'
+						$db->quoteName('cat.lft') . ' >= ' . $db->quoteName('fcat.lft') .
+						') AND (' .
+						$db->quoteName('cat.rgt') . ' <= ' . $db->quoteName('fcat.rgt') .
+						')'
 				],
 			);
 
@@ -774,8 +722,7 @@ PHP
 			->where($db->quoteName('c.id') . ' = ' . $db->quoteName($tableKey . '.item_id'))
 			->where($db->quoteName($tableKey . '.field_id') . ' = ' . $db->quote($fieldId));
 
-		if (isset($field->parent_field_id) && !empty($field->parent_field_id))
-		{
+		if (isset($field->parent_field_id) && !empty($field->parent_field_id)) {
 			/**
 			 * Subform field.
 			 *
@@ -786,8 +733,7 @@ PHP
 			 * Externally, the value clause is conjunctive (AND) to the rest of the conditions, hence the use of
 			 * 'AND' as the first argument to extendWhere().
 			 */
-			if ($this->useMySQLJson)
-			{
+			if ($this->useMySQLJson) {
 				$conditions = array_map(
 					// JSON_SEARCH(value, 'one', 'my_search_value') LIKE "%.field41%"
 					fn($v) => sprintf(
@@ -798,9 +744,7 @@ PHP
 					),
 					$searchValues
 				);
-			}
-			else
-			{
+			} else {
 				// Look for "field123":"value"
 				$conditions = array_map(
 					fn($wrappedvalue) => $db->quoteName($tableKey . '.value') . ' LIKE ' . $db->quote($wrappedvalue),
@@ -812,9 +756,7 @@ PHP
 			}
 
 			$subQuery->extendWhere('AND', $conditions, 'OR');
-		}
-		else
-		{
+		} else {
 			/**
 			 * Whole field value.
 			 *
@@ -835,8 +777,7 @@ PHP
 	{
 		static $alreadyAdded = false;
 
-		if ($alreadyAdded)
-		{
+		if ($alreadyAdded) {
 			return;
 		}
 

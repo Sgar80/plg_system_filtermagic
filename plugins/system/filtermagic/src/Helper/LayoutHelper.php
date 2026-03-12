@@ -1,8 +1,10 @@
 <?php
+
 /**
- *  @package   FilterMagic
- *  @copyright Copyright (c)2022-2023 Nicholas K. Dionysopoulos
- *  @license   GNU General Public License version 3, or later
+ * @package   FilterMagic
+ * @copyright Copyright (c)2022-2023 Nicholas K. Dionysopoulos
+ * @modified  Joomla 6 compatibility port
+ * @license   GNU General Public License version 3, or later
  */
 
 namespace Dionysopoulos\Plugin\System\FilterMagic\Helper;
@@ -31,25 +33,23 @@ class LayoutHelper
 	public static string $defaultBasePath = '';
 
 	/**
-	 * Method to render a layout with debug info
+	 * Method to render a layout with debug info.
 	 *
-	 * @param   string               $layoutFile   Dot separated path to the layout file, relative to base path
-	 * @param   mixed                $displayData  Object which properties are used inside the layout file to build
-	 *                                             displayed output
-	 * @param   string               $basePath     Base path to use when loading layout files
-	 * @param   Registry|array|null  $options      Optional custom options to load. Registry or array format
+	 * @param   string                    $layoutFile   Dot separated path to the layout file, relative to base path
+	 * @param   mixed                     $displayData  Object which properties are used inside the layout file
+	 * @param   string                    $basePath     Base path to use when loading layout files
+	 * @param   Registry|array|null       $options      Optional custom options to load
 	 *
 	 * @return  string
-	 *
 	 * @since   1.0.0
 	 */
-	public static function debug(string $layoutFile, $displayData = null, string $basePath = '', $options = null)
-	{
-		$basePath = empty($basePath) ? self::$defaultBasePath : $basePath;
-
-		// Make sure we send null to FileLayout if no path set
-		$basePath = empty($basePath) ? null : $basePath;
-		$layout   = self::getFileLayout($layoutFile, $basePath, $options);
+	public static function debug(
+		string $layoutFile,
+		mixed $displayData = null,
+		string $basePath = '',
+		Registry|array|null $options = null
+	): string {
+		$layout = self::getFileLayout($layoutFile, self::resolvePath($basePath), $options);
 
 		return $layout->debug($displayData);
 	}
@@ -57,53 +57,70 @@ class LayoutHelper
 	/**
 	 * Method to render the layout.
 	 *
-	 * @param   string               $layoutFile   Dot separated path to the layout file, relative to base path
-	 * @param   mixed                $displayData  Object which properties are used inside the layout file to build
-	 *                                             displayed output
-	 * @param   string               $basePath     Base path to use when loading layout files
-	 * @param   Registry|array|null  $options      Optional custom options to load. Registry or array format
+	 * @param   string                    $layoutFile   Dot separated path to the layout file, relative to base path
+	 * @param   mixed                     $displayData  Object which properties are used inside the layout file
+	 * @param   string                    $basePath     Base path to use when loading layout files
+	 * @param   Registry|array|null       $options      Optional custom options to load
 	 *
 	 * @return  string
-	 *
 	 * @since   1.0.0
 	 */
-	public static function render(string $layoutFile, $displayData = null, string $basePath = '', $options = null)
-	{
-		$basePath = empty($basePath) ? self::$defaultBasePath : $basePath;
-
-		// Make sure we send null to FileLayout if no path set
-		$basePath = empty($basePath) ? null : $basePath;
-		$layout   = self::getFileLayout($layoutFile, $basePath, $options);
+	public static function render(
+		string $layoutFile,
+		mixed $displayData = null,
+		string $basePath = '',
+		Registry|array|null $options = null
+	): string {
+		$layout = self::getFileLayout($layoutFile, self::resolvePath($basePath), $options);
 
 		return $layout->render($displayData);
 	}
 
 	/**
-	 * Get a FileLayout object instance.
+	 * Resolve the effective base path: prefer explicit $basePath, fall back to $defaultBasePath, or null.
 	 *
-	 * @param   string               $layoutFile  Dot separated path to the layout file, relative to base path
-	 * @param   string               $basePath    Base path to use when loading layout files
-	 * @param   Registry|array|null  $options     Optional custom options to load. Registry or array format
+	 * @param   string  $basePath  Explicitly passed base path (may be empty string)
 	 *
-	 * @return  FileLayout
-	 *
+	 * @return  string|null
 	 * @since   1.0.0
 	 */
-	private static function getFileLayout(string $layoutFile, string $basePath = '', $options = null)
+	private static function resolvePath(string $basePath): ?string
 	{
-		$layoutFile = new FileLayout($layoutFile, null, $options);
+		$resolved = !empty($basePath) ? $basePath : self::$defaultBasePath;
 
-		if (empty($basePath))
-		{
-			return $layoutFile;
+		return !empty($resolved) ? $resolved : null;
+	}
+
+	/**
+	 * Get a FileLayout object instance.
+	 *
+	 * Adds the custom base path at the END of the include paths so that template overrides
+	 * (which are added first by FileLayout itself) always take precedence.
+	 *
+	 * @param   string                    $layoutFile  Dot separated path to the layout file
+	 * @param   string|null               $basePath    Base path, or null for Joomla default
+	 * @param   Registry|array|null       $options     Optional custom options
+	 *
+	 * @return  FileLayout
+	 * @since   1.0.0
+	 */
+	private static function getFileLayout(
+		string $layoutFile,
+		?string $basePath = null,
+		Registry|array|null $options = null
+	): FileLayout {
+		$layout = new FileLayout($layoutFile, null, $options);
+
+		if (empty($basePath)) {
+			return $layout;
 		}
 
-		$paths   = $layoutFile->getIncludePaths();
+		$paths   = $layout->getIncludePaths();
 		$paths[] = $basePath;
 
-		$layoutFile->clearIncludePaths();
-		$layoutFile->addIncludePaths($paths);
+		$layout->clearIncludePaths();
+		$layout->addIncludePaths($paths);
 
-		return $layoutFile;
+		return $layout;
 	}
 }

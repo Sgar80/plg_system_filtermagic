@@ -1,7 +1,9 @@
 <?php
+
 /**
  * @package   FilterMagic
  * @copyright Copyright (c)2022-2023 Nicholas K. Dionysopoulos
+ * @modified  Joomla 6 compatibility port
  * @license   GNU General Public License version 3, or later
  */
 
@@ -21,23 +23,25 @@ use Joomla\Utilities\ArrayHelper;
 class TagsField extends ListField
 {
 	/**
-	 * A flexible tag list that respects access controls
+	 * A flexible tag list that respects access controls.
 	 *
 	 * @var    string
 	 * @since  1.0.0
 	 */
-	public $type = 'Tags';
+	// J6: protected + typed string
+	protected string $type = 'Tags';
 
 	/**
-	 * Flag to work with nested tag field
+	 * Flag to work with nested tag field.
+	 * Renamed from $isNested to avoid collision with the isNested() method.
 	 *
-	 * @var    boolean
+	 * @var    bool|null
 	 * @since  1.0.0
 	 */
-	public ?bool $isNested = null;
+	protected ?bool $isNestedMode = null;
 
 	/**
-	 * com_tags parameters
+	 * com_tags parameters.
 	 *
 	 * @var    Registry|null
 	 * @since  1.0.0
@@ -45,15 +49,16 @@ class TagsField extends ListField
 	protected ?Registry $comParams = null;
 
 	/**
-	 * Name of the layout being used to render the field
+	 * Name of the layout being used to render the field.
 	 *
 	 * @var    string
 	 * @since  1.0.0
 	 */
-	protected $layout = 'joomla.form.field.tag';
+	// J6: typed string
+	protected string $layout = 'joomla.form.field.tag';
 
 	/**
-	 * Constructor
+	 * Constructor.
 	 *
 	 * @since  1.0.0
 	 */
@@ -61,62 +66,57 @@ class TagsField extends ListField
 	{
 		parent::__construct();
 
-		// Load com_tags config
 		$this->comParams = ComponentHelper::getParams('com_tags');
 	}
 
 	/**
-	 * Determine if the field has to be tagnested
+	 * Determine if the field should render as nested.
 	 *
-	 * @return  boolean
-	 *
+	 * @return  bool
 	 * @since   1.0.0
 	 */
 	public function isNested(): bool
 	{
-		if ($this->isNested === null)
-		{
-			// If mode="nested" || ( mode not set & config = nested )
-			if (
-				isset($this->element['mode']) && (string) $this->element['mode'] === 'nested'
-				|| !isset($this->element['mode']) && $this->comParams->get('tag_field_ajax_mode', 1) == 0
-			)
-			{
-				$this->isNested = true;
-			}
+		if ($this->isNestedMode === null) {
+			$modeAttr = isset($this->element['mode']) ? (string) $this->element['mode'] : null;
+
+			$this->isNestedMode = ($modeAttr === 'nested')
+				|| ($modeAttr === null && $this->comParams->get('tag_field_ajax_mode', 1) == 0);
 		}
 
-		return $this->isNested;
+		return $this->isNestedMode;
 	}
 
 	/**
-	 * Determines if the field allows or denies custom values
+	 * Determines if the field allows custom values.
 	 *
-	 * @return  boolean
+	 * @return  bool
 	 * @since   1.0.0
 	 */
 	public function allowCustom(): bool
 	{
-		if ($this->element['custom'] && \in_array((string) $this->element['custom'], ['0', 'false', 'deny']))
-		{
+		$custom = isset($this->element['custom']) ? (string) $this->element['custom'] : '';
+
+		if (in_array($custom, ['0', 'false', 'deny'], true)) {
 			return false;
 		}
 
-		return Factory::getUser()->authorise('core.create', 'com_tags');
+		// J6: Factory::getUser() rimosso — usare getApplication()->getIdentity()
+		$user = Factory::getApplication()->getIdentity();
+
+		return $user !== null && $user->authorise('core.create', 'com_tags');
 	}
 
 	/**
-	 * Check whether we need to enable AJAX search
+	 * Check whether AJAX remote search is enabled.
 	 *
-	 * @return  boolean
-	 *
+	 * @return  bool
 	 * @since   1.0.0
 	 */
 	public function isRemoteSearch(): bool
 	{
-		if ($this->element['remote-search'])
-		{
-			return !\in_array((string) $this->element['remote-search'], ['0', 'false', '']);
+		if (isset($this->element['remote-search'])) {
+			return !in_array((string) $this->element['remote-search'], ['0', 'false', ''], true);
 		}
 
 		return $this->comParams->get('tag_field_ajax_mode', 1) == 1;
@@ -125,37 +125,19 @@ class TagsField extends ListField
 	/**
 	 * Method to get the field input for a tag field.
 	 *
-	 * @return  string  The field input.
-	 *
+	 * @return  string
 	 * @since   1.0.0
 	 */
-	protected function getInput()
+	protected function getInput(): string
 	{
 		$data = $this->getLayoutData();
 
-		if (!\is_array($this->value) && !empty($this->value))
-		{
-			if ($this->value instanceof TagsHelper)
-			{
-				if (empty($this->value->tags))
-				{
-					$this->value = [];
-				}
-				else
-				{
-					$this->value = $this->value->tags;
-				}
-			}
-
-			// String in format 2,5,4
-			if (\is_string($this->value))
-			{
+		if (!is_array($this->value) && !empty($this->value)) {
+			if ($this->value instanceof TagsHelper) {
+				$this->value = empty($this->value->tags) ? [] : $this->value->tags;
+			} elseif (is_string($this->value)) {
 				$this->value = explode(',', $this->value);
-			}
-
-			// Integer is given
-			if (\is_int($this->value))
-			{
+			} elseif (is_int($this->value)) {
 				$this->value = [$this->value];
 			}
 
@@ -172,24 +154,28 @@ class TagsField extends ListField
 	}
 
 	/**
-	 * Method to get a list of tags
+	 * Method to get a list of tags.
 	 *
-	 * @return  array  The field option objects.
-	 *
+	 * @return  array
 	 * @since   1.0.0
 	 */
 	protected function getOptions(): array
 	{
-		$published = (string) $this->element['published'] ?: [0, 1];
-		$rootTag   = (string) $this->element['root'] ?: null;
-		$app       = Factory::getApplication();
-		$language  = null;
-		$options   = [];
+		// FIX: il ternario originale con ?: [0,1] era ambiguo — gestiamo esplicitamente
+		$publishedAttr = (string) ($this->element['published'] ?? '');
+		$published     = $publishedAttr !== '' ? $publishedAttr : [0, 1];
 
-		// This limit is only used with isRemoteSearch
+		$rootTag        = isset($this->element['root']) && (string) $this->element['root'] !== ''
+			? (string) $this->element['root']
+			: null;
+
+		$app            = Factory::getApplication();
+		$language       = null;
+		$options        = [];
 		$prefillLimit   = 30;
 		$isRemoteSearch = $this->isRemoteSearch();
 
+		// J6: $this->getDatabase() corretto (FormField ha DatabaseAwareTrait da J4.2)
 		$db    = $this->getDatabase();
 		$query = $db->getQuery(true)
 			->select(
@@ -204,68 +190,49 @@ class TagsField extends ListField
 			)
 			->from($db->quoteName('#__tags', 'a'));
 
-		// Limit Options in multilanguage
-		if ($app->isClient('site') && Multilanguage::isEnabled())
-		{
-			if (ComponentHelper::getParams('com_tags')->get('tag_list_language_filter') === 'current_language')
-			{
+		// Filtro lingua in contesto multilingua o da attributo XML
+		if ($app->isClient('site') && Multilanguage::isEnabled()) {
+			if (ComponentHelper::getParams('com_tags')->get('tag_list_language_filter') === 'current_language') {
 				$language = [$app->getLanguage()->getTag(), '*'];
 			}
-		}
-		elseif (!empty($this->element['language']))
-		{
-			// Filter language
-			if (strpos($this->element['language'], ',') !== false)
-			{
-				$language = explode(',', $this->element['language']);
-			}
-			else
-			{
-				$language = [$this->element['language']];
-			}
+		} elseif (!empty($this->element['language'])) {
+			$langAttr = (string) $this->element['language'];
+			$language = strpos($langAttr, ',') !== false
+				? explode(',', $langAttr)
+				: [$langAttr];
 		}
 
-		if ($language)
-		{
+		if ($language) {
 			$query->whereIn($db->quoteName('a.language'), $language, ParameterType::STRING);
 		}
 
-		if ($rootTag === null)
-		{
+		// Filtro root tag
+		if ($rootTag === null) {
 			$query->where($db->quoteName('a.lft') . ' > 0');
-		}
-		else
-		{
+		} else {
 			$subQuery = $db->getQuery(true)
 				->select('1')
 				->from($db->quoteName('#__tags', 'searchTag'))
-				->where($db->quoteName('searchTag.id') . ' = ' . $db->quote((int) $rootTag))
+				->where($db->quoteName('searchTag.id') . ' = ' . (int) $rootTag)
 				->where($db->quoteName('a.lft') . ' > ' . $db->quoteName('searchTag.lft'))
-				->where($db->quoteName('a.rgt') . ' < ' . $db->quoteName('searchTag.rgt'))
-			;
+				->where($db->quoteName('a.rgt') . ' < ' . $db->quoteName('searchTag.rgt'));
 
 			$query->where('EXISTS(' . $subQuery . ')');
 		}
 
-		// Filter on the published state
-		if (is_numeric($published))
-		{
+		// Filtro published
+		if (is_numeric($published)) {
 			$published = (int) $published;
 			$query->where($db->quoteName('a.published') . ' = :published')
 				->bind(':published', $published, ParameterType::INTEGER);
-		}
-		elseif (\is_array($published))
-		{
-			$published = ArrayHelper::toInteger($published);
-			$query->whereIn($db->quoteName('a.published'), $published);
+		} elseif (is_array($published)) {
+			$query->whereIn($db->quoteName('a.published'), ArrayHelper::toInteger($published));
 		}
 
 		$query->order($db->quoteName('a.lft') . ' ASC');
 
-		// Preload only active values and 30 most used tags or fill up
-		if ($isRemoteSearch)
-		{
-			// Load the most $prefillLimit used tags
+		// Remote search: preload top N tags + tag selezionati
+		if ($isRemoteSearch) {
 			$topQuery = $db->getQuery(true)
 				->select($db->quoteName('tag_id'))
 				->from($db->quoteName('#__contentitem_tag_map'))
@@ -276,86 +243,64 @@ class TagsField extends ListField
 			$db->setQuery($topQuery);
 			$topIds = $db->loadColumn();
 
-			// Merge the used values into the most used tags
-			if (!empty($this->value) && is_array($this->value))
-			{
+			if (!empty($this->value) && is_array($this->value)) {
 				$topIds = array_unique(array_merge($topIds, $this->value));
 			}
 
-			// Set the default limit for the main query
 			$query->setLimit($prefillLimit);
 
-			if (!empty($topIds))
-			{
-				// Filter the ids to the most used tags and the selected tags
+			if (!empty($topIds)) {
 				$preQuery = clone $query;
 				$preQuery->clear('limit')
 					->whereIn($db->quoteName('a.id'), $topIds);
 
 				$db->setQuery($preQuery);
 
-				try
-				{
+				try {
 					$options = $db->loadObjectList();
-				}
-				catch (\RuntimeException $e)
-				{
+				} catch (\RuntimeException $e) {
 					return [];
 				}
 
-				// Limit the main query to the missing amount of tags
 				$count        = count($options);
 				$prefillLimit = $prefillLimit - $count;
 				$query->setLimit($prefillLimit);
 
-				// Exclude the already loaded tags from the main query
-				if ($count > 0)
-				{
+				if ($count > 0) {
 					$query->whereNotIn($db->quoteName('a.id'), ArrayHelper::getColumn($options, 'value'));
 				}
 			}
 		}
 
-		// Only execute the query if we need more tags not already loaded by the $preQuery query
-		if (!$isRemoteSearch || $prefillLimit > 0)
-		{
-			// Get the options.
+		// Carica i restanti tag se necessario
+		if (!$isRemoteSearch || $prefillLimit > 0) {
 			$db->setQuery($query);
 
-			try
-			{
+			try {
 				$options = array_merge($options, $db->loadObjectList());
-			}
-			catch (\RuntimeException $e)
-			{
+			} catch (\RuntimeException $e) {
 				return [];
 			}
 		}
 
-		// Block the possibility to set a tag as it own parent
-		if ($this->form->getName() === 'com_tags.tag')
-		{
+		// Disabilita il tag corrente se siamo nel form com_tags.tag (evita auto-parentaggio)
+		if ($this->form->getName() === 'com_tags.tag') {
 			$id = (int) $this->form->getValue('id', 0);
 
-			foreach ($options as $option)
-			{
-				if ($option->value == $id)
-				{
+			foreach ($options as $option) {
+				if ((int) $option->value === $id) {
 					$option->disable = true;
 				}
 			}
 		}
 
-		// Merge any additional options in the XML definition.
+		// Merge opzioni aggiuntive da XML
 		$options = array_merge(parent::getOptions(), $options);
 
-		// Prepare nested data
-		if ($this->isNested())
-		{
+		// Prepara visualizzazione nested o flat
+		if ($this->isNested()) {
 			$this->prepareOptionsNested($options);
-		}
-		else
-		{
+		} else {
 			$options = TagsHelper::convertPathsToNames($options);
 		}
 
@@ -363,26 +308,18 @@ class TagsField extends ListField
 	}
 
 	/**
-	 * Add "-" before nested tags, depending on level
+	 * Add "- " prefix to nested tags based on their level.
 	 *
-	 * @param   array  &$options  Array of tags
+	 * @param   array  $options  Array of tag option objects (passed by reference).
 	 *
-	 * @return  array  The field option objects.
-	 *
+	 * @return  void
 	 * @since   1.0.0
 	 */
-	protected function prepareOptionsNested(array &$options): array
+	protected function prepareOptionsNested(array &$options): void
 	{
-		if ($options)
-		{
-			foreach ($options as &$option)
-			{
-				$repeat       = (isset($option->level) && $option->level - 1 >= 0) ? $option->level - 1 : 0;
-				$option->text = str_repeat('- ', $repeat) . $option->text;
-			}
+		foreach ($options as $option) {
+			$repeat       = isset($option->level) ? max(0, $option->level - 1) : 0;
+			$option->text = str_repeat('- ', $repeat) . $option->text;
 		}
-
-		return $options;
 	}
-
 }

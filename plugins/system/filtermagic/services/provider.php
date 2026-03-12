@@ -1,13 +1,15 @@
 <?php
+
 /**
  * @package   FilterMagic
  * @copyright Copyright (c)2022-2023 Nicholas K. Dionysopoulos
+ * @modified  Joomla 6 compatibility port
  * @license   GNU General Public License version 3, or later
  */
 
 defined('_JEXEC') || die;
 
-use Joomla\CMS\Extension\MVCComponent;
+use Dionysopoulos\Plugin\System\FilterMagic\Extension\FilterMagic;
 use Joomla\CMS\Extension\PluginInterface;
 use Joomla\CMS\Factory;
 use Joomla\CMS\Plugin\PluginHelper;
@@ -15,7 +17,6 @@ use Joomla\Database\DatabaseInterface;
 use Joomla\DI\Container;
 use Joomla\DI\ServiceProviderInterface;
 use Joomla\Event\DispatcherInterface;
-use Dionysopoulos\Plugin\System\FilterMagic\Extension\FilterMagic;
 
 return new class implements ServiceProviderInterface {
 	/**
@@ -24,15 +25,13 @@ return new class implements ServiceProviderInterface {
 	 * @param   Container  $container  The DI container.
 	 *
 	 * @return  void
-	 *
-	 * @since   5.0.0
+	 * @since   1.0.0
 	 */
-	public function register(Container $container)
+	public function register(Container $container): void
 	{
-		/** @var MVCComponent $component */
 		$container->set(
 			PluginInterface::class,
-			function (Container $container) {
+			function (Container $container): PluginInterface {
 				$config  = (array) PluginHelper::getPlugin('system', 'filtermagic');
 				$subject = $container->get(DispatcherInterface::class);
 				$plugin  = new FilterMagic($subject, $config);
@@ -45,4 +44,3 @@ return new class implements ServiceProviderInterface {
 		);
 	}
 };
-
